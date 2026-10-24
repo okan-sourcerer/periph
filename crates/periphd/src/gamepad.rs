@@ -252,7 +252,12 @@ enum Out {
 /// User remap first (in the pad's own codes), then, in Xbox mode, the code
 /// an Xbox pad sends from the same position.
 fn translate(code: u16, profile: &RemapProfile, layout: ButtonLayout) -> Out {
-    let code = match profile.map.get(&code) {
+    let mapped = if profile.enabled {
+        profile.map.get(&code)
+    } else {
+        None
+    };
+    let code = match mapped {
         Some(0) => return Out::Drop,
         Some(&target) => target,
         None => code,
@@ -471,6 +476,20 @@ mod tests {
         // Left (west, 0x134) leaves as Xbox X, 0x133.
         assert_eq!(translate(0x131, &p, layout), Out::Key(0x133));
         assert_eq!(translate(0x130, &p, layout), Out::Drop);
+    }
+
+    #[test]
+    fn xbox_mode_works_without_remapping() {
+        let mut p = RemapProfile {
+            enabled: false,
+            xbox: true,
+            ..Default::default()
+        };
+        p.map.insert(0x130, 0); // saved but switched off
+        assert!(p.active());
+        let layout = ButtonLayout::Nintendo;
+        assert_eq!(translate(0x130, &p, layout), Out::Key(0x130));
+        assert_eq!(translate(0x133, &p, layout), Out::Key(0x134));
     }
 
     #[test]

@@ -142,9 +142,10 @@ pub struct RemapProfile {
 }
 
 impl RemapProfile {
-    /// Whether this profile needs the pad grabbed at all.
+    /// Whether this profile needs the pad grabbed at all. `enabled` switches
+    /// the button map; Xbox mode stands on its own.
     pub fn active(&self) -> bool {
-        self.enabled && (self.xbox || !self.map.is_empty())
+        self.xbox || (self.enabled && !self.map.is_empty())
     }
 }
 

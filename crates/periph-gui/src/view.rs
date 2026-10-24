@@ -97,7 +97,9 @@ pub fn device_group(
     }
 
     if !d.buttons.is_empty() {
-        group.add(&remap_row(d, remap.unwrap_or_default(), client));
+        for row in remap_rows(d, remap.unwrap_or_default(), client) {
+            group.add(&row);
+        }
     }
     group
 }
@@ -160,8 +162,10 @@ fn setting_row(id: &str, s: &Setting, client: &Client) -> gtk::Widget {
     }
 }
 
+/// The Xbox-mode switch (Switch-layout pads only) and the remapping expander.
 /// Choice index 0 = default, 1 = disabled, 2.. = map to `buttons[i - 2]`.
-fn remap_row(d: &Device, profile: RemapProfile, client: &Client) -> gtk::Widget {
+fn remap_rows(d: &Device, profile: RemapProfile, client: &Client) -> Vec<gtk::Widget> {
+    let mut rows = Vec::new();
     let expander = adw::ExpanderRow::builder()
         .title("Button remapping")
         .subtitle("Takes over the controller and exposes a remapped virtual one")
@@ -192,7 +196,8 @@ fn remap_row(d: &Device, profile: RemapProfile, client: &Client) -> gtk::Widget 
         });
     }
 
-    // Switch-layout pads confuse games that expect Xbox positions.
+    // Switch-layout pads confuse games that expect Xbox positions. This is
+    // its own row, not part of remapping, so it's visible without expanding.
     if layout != ButtonLayout::Xbox {
         let row = adw::SwitchRow::builder()
             .title("Act as an Xbox controller")
@@ -204,7 +209,7 @@ fn remap_row(d: &Device, profile: RemapProfile, client: &Client) -> gtk::Widget 
             profile.borrow_mut().xbox = r.is_active();
             client.set_remap(&id, &profile.borrow());
         });
-        expander.add_row(&row);
+        rows.push(row.upcast());
     }
 
     for &source in &buttons {
@@ -251,5 +256,6 @@ fn remap_row(d: &Device, profile: RemapProfile, client: &Client) -> gtk::Widget 
         });
         expander.add_row(&row);
     }
-    expander.upcast()
+    rows.push(expander.upcast());
+    rows
 }
