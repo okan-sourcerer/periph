@@ -45,6 +45,7 @@ pub async fn connected(system: &Connection) -> zbus::Result<Vec<BtDevice>> {
             .map(|percent| Battery {
                 percent: percent.min(100),
                 charging: None,
+                coarse: false,
             });
         out.push(BtDevice {
             device: Device {
@@ -57,6 +58,7 @@ pub async fn connected(system: &Connection) -> zbus::Result<Vec<BtDevice>> {
                 settings: Vec::new(),
                 info: vec![("Address".into(), address.clone())],
                 buttons: Vec::new(),
+                layout: Default::default(),
             },
             address,
         });

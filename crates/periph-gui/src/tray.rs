@@ -20,9 +20,9 @@ fn summary(d: &Device) -> String {
     match (d.connected, d.battery) {
         (false, _) => format!("{}: off", d.name),
         (true, Some(b)) if b.charging == Some(true) => {
-            format!("{}: {}% (charging)", d.name, b.percent)
+            format!("{}: {} (charging)", d.name, b.level_text())
         }
-        (true, Some(b)) => format!("{}: {}%", d.name, b.percent),
+        (true, Some(b)) => format!("{}: {}", d.name, b.level_text()),
         (true, None) => d.name.clone(),
     }
 }

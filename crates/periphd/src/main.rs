@@ -76,24 +76,25 @@ impl State {
     fn sync_remappers(&self, pads: &[gamepad::Pad]) {
         let remaps = self.remaps.lock().unwrap();
         let mut running = self.remappers.lock().unwrap();
-        let wanted: HashMap<&str, (&PathBuf, &RemapProfile)> = pads
+        let wanted: HashMap<&str, (&gamepad::Pad, &RemapProfile)> = pads
             .iter()
             .filter_map(|p| {
                 let profile = remaps.get(&p.device.id)?;
-                (profile.enabled && !profile.map.is_empty())
-                    .then_some((p.device.id.as_str(), (&p.path, profile)))
+                profile
+                    .active()
+                    .then_some((p.device.id.as_str(), (p, profile)))
             })
             .collect();
         running.retain(|id, r| {
-            wanted.get(id.as_str()).is_some_and(|(path, profile)| {
-                !r.finished() && r.path == **path && r.profile == **profile
+            wanted.get(id.as_str()).is_some_and(|(pad, profile)| {
+                !r.finished() && r.path == pad.path && r.profile == **profile
             })
         });
-        for (id, (path, profile)) in wanted {
+        for (id, (pad, profile)) in wanted {
             if !running.contains_key(id) {
                 running.insert(
                     id.to_string(),
-                    Remapper::start(path.clone(), profile.clone()),
+                    Remapper::start(pad.path.clone(), profile.clone(), pad.device.layout),
                 );
             }
         }

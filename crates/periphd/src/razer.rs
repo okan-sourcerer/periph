@@ -154,6 +154,7 @@ impl BlackShark {
         self.cache.battery = Some(Battery {
             percent: level.min(100),
             charging,
+            coarse: false,
         });
 
         if self.settings_stale || !was_connected {
@@ -263,6 +264,7 @@ impl BlackShark {
             settings,
             info,
             buttons: Vec::new(),
+            layout: Default::default(),
         }
     }
 

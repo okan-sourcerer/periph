@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::glib;
+use periph_core::{ButtonLayout, GAMEPAD_BUTTONS, label_code};
 use periph_core::{DaemonProxy, Device, RemapProfile, Setting, SettingKind, button_label};
 
 /// Sends changes to the daemon and reports failures as toasts.
@@ -68,8 +69,8 @@ pub fn device_group(
     if let Some(b) = d.battery {
         let row = adw::ActionRow::builder().title("Battery").build();
         row.set_subtitle(&match b.charging {
-            Some(true) => format!("{}% · charging", b.percent),
-            _ => format!("{}%", b.percent),
+            Some(true) => format!("{} · charging", b.level_text()),
+            _ => b.level_text(),
         });
         let bar = gtk::LevelBar::builder()
             .min_value(0.0)
@@ -169,9 +170,18 @@ fn remap_row(d: &Device, profile: RemapProfile, client: &Client) -> gtk::Widget 
         .build();
 
     let profile = Rc::new(RefCell::new(profile));
-    let buttons = d.buttons.clone();
+    let layout = d.layout;
+    // List buttons in the usual order of their printed labels (A, B, X, Y, ...).
+    let mut buttons = d.buttons.clone();
+    buttons.sort_by_key(|&b| {
+        let x = label_code(b, layout);
+        GAMEPAD_BUTTONS
+            .iter()
+            .position(|(c, _)| *c == x)
+            .unwrap_or(usize::MAX)
+    });
     let mut labels = vec!["Default".to_string(), "Disabled".to_string()];
-    labels.extend(buttons.iter().map(|b| button_label(*b)));
+    labels.extend(buttons.iter().map(|b| button_label(*b, layout)));
     let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
 
     {
@@ -182,9 +192,24 @@ fn remap_row(d: &Device, profile: RemapProfile, client: &Client) -> gtk::Widget 
         });
     }
 
+    // Switch-layout pads confuse games that expect Xbox positions.
+    if layout != ButtonLayout::Xbox {
+        let row = adw::SwitchRow::builder()
+            .title("Act as an Xbox controller")
+            .subtitle("Games see an Xbox 360 pad; buttons keep their positions (bottom = A), as on the dongle")
+            .active(profile.borrow().xbox)
+            .build();
+        let (profile, client, id) = (profile.clone(), client.clone(), d.id.clone());
+        row.connect_active_notify(move |r| {
+            profile.borrow_mut().xbox = r.is_active();
+            client.set_remap(&id, &profile.borrow());
+        });
+        expander.add_row(&row);
+    }
+
     for &source in &buttons {
         let row = adw::ComboRow::builder()
-            .title(button_label(source))
+            .title(button_label(source, layout))
             .model(&gtk::StringList::new(&labels))
             .build();
         let selected = match profile.borrow().map.get(&source) {
