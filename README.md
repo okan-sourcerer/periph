@@ -38,11 +38,17 @@ For development, run `cargo run -p periphd` in one terminal and
 | Device | Battery | Settings |
 |---|---|---|
 | Razer BlackShark V2 Pro 2.4 (`1532:0555`) | level and charging | EQ preset, mic monitoring, auto power-off, do not disturb |
-| Any Bluetooth device | if BlueZ reports it | – |
-| Any evdev gamepad (8BitDo, Xbox, DualSense, ...) | if the kernel driver reports it | button remapping |
+| Any Bluetooth device | from BlueZ, or read straight from GATT when BlueZ's battery plugin misses it | – |
+| Any evdev gamepad (8BitDo, Xbox, DualSense, ...) | if the kernel driver reports it (Switch pads give a level, not a percentage) | button remapping; Switch-layout pads can act as an Xbox controller |
 
 The Razer protocol is based on the reverse-engineering in
 [openrazer/openrazer#2862](https://github.com/openrazer/openrazer/pull/2862).
+
+## Low-battery notifications
+
+The daemon sends a desktop notification when a device drops to 20% (or a
+"Low" level) and again at 10% ("Critical"). It won't repeat for that device
+until it charges or climbs back above 25%.
 
 ## Adding a device
 

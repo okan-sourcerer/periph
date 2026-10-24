@@ -3,6 +3,7 @@
 mod bluez;
 mod gamepad;
 mod hidraw;
+mod notify;
 mod razer;
 
 use std::collections::{BTreeMap, HashMap};
@@ -228,8 +229,8 @@ async fn main() -> anyhow::Result<()> {
         .context(
             "could not claim io.github.periph.Daemon on the session bus (is periphd already running?)",
         )?;
-    let system = Connection::system().await.ok();
-    if system.is_none() {
+    let mut bluez = Connection::system().await.ok().map(bluez::Bluez::new);
+    if bluez.is_none() {
         warn!("no system bus: Bluetooth devices won't be listed");
     }
     info!("periphd ready on {BUS_NAME}");
@@ -238,18 +239,20 @@ async fn main() -> anyhow::Result<()> {
         .object_server()
         .interface::<_, Api>(OBJECT_PATH)
         .await?;
+    let mut notifier = notify::Notifier::new(session.clone());
     let mut force = true;
     loop {
         let st = state.clone();
         let (local, pads) = tokio::task::spawn_blocking(move || st.scan_local(force)).await?;
-        let bt = match &system {
-            Some(sys) => bluez::connected(sys).await.unwrap_or_else(|e| {
+        let bt = match bluez.as_mut() {
+            Some(bluez) => bluez.connected().await.unwrap_or_else(|e| {
                 warn!("BlueZ: {e}");
                 Vec::new()
             }),
             None => Vec::new(),
         };
         let devices = merge(local, pads, bt);
+        notifier.update(&devices).await;
         let changed = {
             let mut current = state.devices.lock().unwrap();
             let changed = *current != devices;
