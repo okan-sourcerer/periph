@@ -11,6 +11,10 @@
 //!
 //! The 2.4 GHz link dozes after ~0.3 s idle and drops the first frame sent
 //! into it, so every exchange starts with a sacrificial "remote mode on".
+//!
+//! Mic mute is not readable: the earcup button mutes inside the headset,
+//! no query register changes with it (0x55, OpenRazer's "mic mute", stays
+//! at 1 either way) and the headset sends no report when it is pressed.
 
 use std::io;
 use std::path::PathBuf;
@@ -43,7 +47,6 @@ const CMD_PREP: u8 = 0x1e;
 const CMD_FW_VER: u8 = 0x02;
 const CMD_BATTERY: u8 = 0x21;
 const CMD_CHARGING: u8 = 0x2a;
-const CMD_MIC_MUTE: u8 = 0x55;
 const CMD_PRESET_GET: u8 = 0x13;
 const CMD_SIDETONE_GET: u8 = 0x18;
 const CMD_SIDETONE_LVL_GET: u8 = 0x19;
@@ -87,7 +90,6 @@ pub fn matches(node: &HidrawNode) -> bool {
 struct Cached {
     connected: bool,
     battery: Option<Battery>,
-    mic_muted: Option<bool>,
     firmware: Option<String>,
     preset: Option<u8>,
     sidetone: Option<u8>,
@@ -153,7 +155,6 @@ impl BlackShark {
             percent: level.min(100),
             charging,
         });
-        self.cache.mic_muted = self.query1(CMD_MIC_MUTE).ok().map(|v| v != 0);
 
         if self.settings_stale || !was_connected {
             self.read_settings();
@@ -221,9 +222,6 @@ impl BlackShark {
         }
         if let Some(fw) = &self.cache.firmware {
             info.push(("Firmware".into(), fw.clone()));
-        }
-        if let Some(m) = self.cache.mic_muted {
-            info.push(("Microphone".into(), if m { "Muted" } else { "Live" }.into()));
         }
 
         let mut settings = Vec::new();
