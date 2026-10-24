@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Periph
+Comment=Battery, settings and button remapping for wireless devices
+Exec=periph
+Icon=input-gaming
+Categories=Settings;HardwareSettings;

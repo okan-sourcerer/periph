@@ -1,0 +1,8 @@
+# periph: let the logged-in user talk to supported dongles without root.
+# Numbered below 73 so systemd-logind applies the uaccess tag.
+
+# Razer BlackShark V2 Pro 2.4 dongle (vendor command channel)
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0555", TAG+="uaccess"
+
+# uinput, for the virtual pad that gamepad remapping creates
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"
